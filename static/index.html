@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat IA - Asistente Técnico</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Encabezado del chat -->
+        <div class="chat-header">
+            <h1>🤖 Asistente Técnico IA</h1>
+            <p>Experto en programación y desarrollo de software</p>
+        </div>
+
+        <!-- Área de mensajes -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <p>¡Hola! Soy tu asistente técnico IA. ¿En qué puedo ayudarte hoy? Puedo responder preguntas sobre programación, desarrollo web, bases de datos y mucho más.</p>
+            </div>
+        </div>
+
+        <!-- Área de entrada -->
+        <div class="chat-input-area">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Escribe tu pregunta aquí..." 
+                    autocomplete="off"
+                >
+                <button id="sendButton" class="send-button">
+                    <span>Enviar</span>
+                </button>
+            </div>
+            <small id="loadingIndicator" class="loading-indicator" style="display: none;">⏳ Procesando...</small>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
