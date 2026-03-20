@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Chat con Gemini</title>
+    <style>
+      :root{--bg:#f6f8fb;--card:#ffffff;--user:#0b93f6;--bot:#eef2fb;--text:#0f1720}
+      *{box-sizing:border-box}
+      body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;height:100vh}
+      .container{width:100%;max-width:760px;height:90vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(255,255,255,0.6),rgba(255,255,255,0.9));border-radius:12px;box-shadow:0 8px 30px rgba(15,23,32,0.08);overflow:hidden}
+      .header{padding:16px 20px;border-bottom:1px solid rgba(15,23,32,0.04);font-weight:600}
+      .messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:transparent}
+      .msg{max-width:80%;padding:12px 14px;border-radius:14px;line-height:1.4;word-wrap:break-word}
+      .msg.bot{align-self:flex-start;background:var(--bot);color:var(--text);border-top-left-radius:6px}
+      .msg.user{align-self:flex-end;background:var(--user);color:#fff;border-top-right-radius:6px}
+      .footer{padding:12px;border-top:1px solid rgba(15,23,32,0.04);display:flex;gap:8px}
+      .input{flex:1;display:flex;gap:8px}
+      input[type=text]{flex:1;padding:12px 14px;border-radius:10px;border:1px solid rgba(15,23,32,0.06);font-size:15px}
+      button{background:var(--user);color:#fff;border:none;padding:0 16px;border-radius:10px;font-weight:600;cursor:pointer}
+      .typing{font-style:italic;opacity:0.85}
+      @media (max-width:480px){.container{height:100vh;border-radius:0}}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">Chat con Gemini</div>
+      <div id="messages" class="messages" role="log" aria-live="polite"></div>
+      <form id="chat-form" class="footer" autocomplete="off">
+        <div class="input">
+          <input id="message-input" type="text" name="message" placeholder="Escribe un mensaje..." required />
+        </div>
+        <button id="send-btn" type="submit">Enviar</button>
+      </form>
+    </div>
+
+    <script>
+      const messagesEl = document.getElementById('messages');
+      const form = document.getElementById('chat-form');
+      const input = document.getElementById('message-input');
+
+      function appendMessage(text, sender='bot', extraClass=''){
+        const el = document.createElement('div');
+        el.className = 'msg ' + (sender==='user' ? 'user' : 'bot') + (extraClass ? ' '+extraClass : '');
+        el.textContent = text;
+        messagesEl.appendChild(el);
+        el.scrollIntoView({behavior:'smooth', block:'end'});
+        return el;
+      }
+
+      async function sendMessage(message){
+        appendMessage(message, 'user');
+        const typingEl = appendMessage('Escribiendo...', 'bot', 'typing');
+
+        try{
+          const res = await fetch('/chat', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({message})
+          });
+
+          if(!res.ok){
+            const text = await res.text();
+            throw new Error(text || 'Error en la respuesta del servidor');
+          }
+
+          const data = await res.json();
+          typingEl.remove();
+          appendMessage(data.response || '(sin respuesta)', 'bot');
+        }catch(err){
+          typingEl.remove();
+          appendMessage('Error: ' + (err.message || err), 'bot');
+        }
+      }
+
+      form.addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const val = input.value.trim();
+        if(!val) return;
+        input.value = '';
+        sendMessage(val);
+      });
+
+      appendMessage('Hola — soy tu asistente impulsado por Gemini. Escribe algo y presiona Enviar.', 'bot');
+    </script>
+  </body>
+</html>
