@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chat - FastAPI + Gemini</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#ffffff;--user:#1e90ff;--bot:#eceff1;--text:#263238;--muted:#607d8b}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,system-ui,Arial;background:linear-gradient(180deg,#eef3fb 0%,var(--bg)100%);color:var(--text);height:100vh;display:flex;align-items:center;justify-content:center}
+    .app{width:100%;max-width:760px;height:90vh;background:var(--card);box-shadow:0 8px 30px rgba(11,22,39,.06);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+    .header{padding:16px 20px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;gap:12px}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#6c8ef5,#7be5c3)}
+    .title{font-weight:600}
+    .messages{flex:1;padding:18px 18px 100px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+    .msg{max-width:78%;padding:10px 14px;border-radius:14px;line-height:1.4;word-break:break-word}
+    .msg.bot{align-self:flex-start;background:var(--bot);color:var(--text);border-top-left-radius:6px}
+    .msg.user{align-self:flex-end;background:var(--user);color:#fff;border-top-right-radius:6px}
+    .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .input-area{position:sticky;bottom:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.03),transparent);display:flex;align-items:center;gap:8px}
+    form{display:flex;gap:8px;width:100%}
+    .input{flex:1;display:flex;align-items:center;background:#f6f9fc;padding:10px;border-radius:999px;border:1px solid #e6eef6}
+    .input input{flex:1;border:0;background:transparent;padding:6px 10px;font-size:15px;outline:none}
+    button.send{background:var(--user);color:#fff;border:0;padding:10px 14px;border-radius:999px;font-weight:600;cursor:pointer}
+    button.send:disabled{opacity:.6;cursor:default}
+    .typing{display:inline-block;padding:10px 14px;border-radius:14px;background:var(--bot)}
+    .dots{display:inline-block;width:40px;text-align:center}
+    .dots span{display:inline-block;width:8px;height:8px;margin:0 3px;background:#90a4ae;border-radius:50%;animation:blink 1s infinite}
+    .dots span:nth-child(2){animation-delay:.15s}
+    .dots span:nth-child(3){animation-delay:.3s}
+    @keyframes blink{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+    @media (max-width:480px){.app{height:100vh;border-radius:0}.messages{padding:14px 12px 110px}}
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <div class="header">
+      <div class="logo" aria-hidden></div>
+      <div>
+        <div class="title">Chat AI</div>
+        <div class="meta">Conectado a http://localhost:8000/chat</div>
+      </div>
+    </div>
+
+    <main class="messages" id="messages" aria-live="polite"></main>
+
+    <div class="input-area">
+      <form id="chat-form">
+        <div class="input">
+          <input id="message" name="message" placeholder="Escribe un mensaje..." autocomplete="off" required />
+        </div>
+        <button type="submit" class="send" id="send-btn">Enviar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('message');
+    const sendBtn = document.getElementById('send-btn');
+
+    function appendMessage(text, role='bot', opts={}){
+      const el = document.createElement('div');
+      el.className = 'msg ' + (role==='user' ? 'user' : 'bot');
+      if(opts.isError){ el.style.background='#ffeded'; el.style.color='#6b1e1e' }
+      el.textContent = text;
+      messagesEl.appendChild(el);
+      el.scrollIntoView({behavior:'smooth',block:'end'});
+      return el;
+    }
+
+    function appendTyping(){
+      const wrap = document.createElement('div');
+      wrap.className = 'typing';
+      const dots = document.createElement('div');
+      dots.className = 'dots';
+      dots.innerHTML = '<span></span><span></span><span></span>';
+      wrap.appendChild(dots);
+      messagesEl.appendChild(wrap);
+      wrap.scrollIntoView({behavior:'smooth',block:'end'});
+      return wrap;
+    }
+
+    async function postMessage(message){
+      const controller = new AbortController();
+      const timeout = setTimeout(()=>controller.abort(), 12000);
+      try{
+        const res = await fetch('http://localhost:8000/chat', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({message}),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if(!res.ok){
+          const text = await res.text();
+          throw new Error('Server: ' + (text || res.status));
+        }
+        const data = await res.json();
+        return data;
+      }catch(err){
+        clearTimeout(timeout);
+        throw err;
+      }
+    }
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const text = input.value.trim();
+      if(!text) return;
+      input.value = '';
+      input.disabled = true;
+      sendBtn.disabled = true;
+      appendMessage(text, 'user');
+
+      const typing = appendTyping();
+
+      try{
+        const resp = await postMessage(text);
+        typing.remove();
+        if(resp && typeof resp.reply === 'string'){
+          appendMessage(resp.reply, 'bot');
+        }else{
+          appendMessage('Respuesta inválida del servidor.', 'bot', {isError:true});
+        }
+      }catch(err){
+        typing.remove();
+        const msg = (err.name === 'AbortError') ? 'La petición tardó demasiado.' : 'No se pudo conectar al backend.';
+        appendMessage(msg + ' ' + (err.message || ''), 'bot', {isError:true});
+      }finally{
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    });
+
+    // Pequeño mensaje de bienvenida
+    appendMessage('Hola — soy el asistente. Envía un mensaje para empezar.', 'bot');
+  </script>
+</body>
+</html>
