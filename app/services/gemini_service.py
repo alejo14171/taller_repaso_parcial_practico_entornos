@@ -1,0 +1,46 @@
+import requests
+from ..config.settings import settings
+
+
+class GeminiServiceError(Exception):
+    pass
+
+
+def generate_text(prompt: str) -> str:
+    if not settings.GEMINI_API_KEY:
+        raise GeminiServiceError("API key para Gemini no está configurada.")
+
+    # URL corregida: v1beta (no v1beta2) y formato correcto del endpoint
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+    )
+
+    # Payload con el formato actual de la API Gemini (no el formato PaLM antiguo)
+    payload = {
+        "contents": [
+            {"parts": [{"text": prompt}]}
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 512,
+        },
+    }
+
+    try:
+        resp = requests.post(url, json=payload, timeout=settings.TIMEOUT)
+    except requests.RequestException as e:
+        raise GeminiServiceError(f"Request fallido: {e}")
+
+    if resp.status_code != 200:
+        raise GeminiServiceError(f"Error de la API Gemini: {resp.status_code} {resp.text}")
+
+    data = resp.json()
+
+    # Parseo correcto de la respuesta actual de Gemini
+    try:
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError, TypeError) as e:
+        raise GeminiServiceError(f"Respuesta inesperada de Gemini: {e} — {data}")
+
+    return text
