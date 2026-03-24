@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Chat IA - Demo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">Chat IA</header>
+      <main id="messages" class="messages" aria-live="polite"></main>
+
+      <form id="composer" class="composer" action="#">
+        <div class="input-wrap">
+          <textarea id="input" placeholder="Escribe un mensaje..." rows="1"></textarea>
+        </div>
+        <button id="send" type="submit">Enviar</button>
+      </form>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
